@@ -26,7 +26,7 @@ public class Students {
 	@Id
 	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "students_seq")
 	@NotNull(message = "id must not be null")
-	@Column(name = "id", columnDefinition = "default nextval('students_seq'::regclass)")
+	@Column(name = "id")
 	private Long id;
 
 	@NotNull(message = "name must not be null")
