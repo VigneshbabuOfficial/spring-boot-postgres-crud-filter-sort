@@ -1,11 +1,26 @@
 package com.school.services;
 
+import java.lang.reflect.Field;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityManager;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Order;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -28,20 +43,104 @@ public class StudentService {
 	private static final String LOG_STR = "StudentService.%s";
 
 	@Autowired
+	private EntityManager entityManager;
+
+	final static String DATE_FORMAT = "dd-MM-yyyy";
+
+	@Autowired
 	private SchoolLogger logger;
 
 	@Autowired
 	private StudentsRepository repository;
 
-	public ResponseEntity<JsonNode> getAllStudents(Specification<Students> specs) {
+	public ResponseEntity<JsonNode> getAllStudents(Specification<Students> specs, String globalSearch, int page,
+			int limit, List<String> sortingList) {
 
-		String methodName = "getAllStudents";
+		String methodName = "getAllStudents" + ", queryData = " + specs + ", globalSearch = "
+				+ globalSearch + ", page = " + page + ", limit = " + limit + ", sorting-list = "
+				+ String.join(", ", sortingList);
 
 		logger.info(String.format(LOG_STR, methodName));
 
 		ObjectNode responseNode = JsonNodeFactory.instance.objectNode();
 
-		List<Students> studentsList = repository.findAll(Specification.where(specs));
+		List<Students> studentsList = new ArrayList<>();
+
+		CriteriaBuilder listCriteriaBuilder = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Students> listCriteriaQuery = listCriteriaBuilder.createQuery(Students.class);
+		Root<Students> listStudentsRoot = listCriteriaQuery.from(Students.class);
+
+		if (Objects.nonNull(specs)) {
+
+			listCriteriaQuery.where(specs.toPredicate(listStudentsRoot, listCriteriaQuery, listCriteriaBuilder));
+
+		} else if( StringUtils.isNotBlank(globalSearch) ){
+
+			List<Predicate> predicates = new ArrayList<>();
+
+			Students stud = new Students();
+
+			Field[] field1 = stud.getClass().getDeclaredFields();
+
+			List<Predicate> orPredicates = new ArrayList<>();
+
+			for (Field field : field1) {
+
+				System.out.println("field1=" + field.getName());
+
+				if (isDateValid(globalSearch) && field.getType() == LocalDate.class) {
+
+					DateFormat df = new SimpleDateFormat(DATE_FORMAT);
+					df.setLenient(false);
+					try {
+						orPredicates.add(listCriteriaBuilder.equal(listStudentsRoot.get(field.getName()),
+								df.parse(globalSearch)));
+					} catch (ParseException e) {
+						e.printStackTrace();
+					}
+
+				} else if (NumberUtils.isNumber(globalSearch) && field.getType() == Number.class) {
+
+					orPredicates.add(listCriteriaBuilder.equal(listStudentsRoot.get(field.getName()), globalSearch));
+
+				} else if (field.getType() == String.class) {
+
+					orPredicates.add(
+							listCriteriaBuilder.like(listCriteriaBuilder.lower(listStudentsRoot.get(field.getName())),
+									"%" + globalSearch + "%"));
+				}
+
+			}
+
+			predicates.add(listCriteriaBuilder.or(orPredicates.toArray(new Predicate[0])));
+
+			listCriteriaQuery.where(predicates.toArray(new Predicate[predicates.size()]));
+
+		}
+		
+		
+		if( !sortingList.isEmpty() ) {
+			
+			List<Order> orderByList = new ArrayList<>();
+			
+			for (String sortObj : sortingList) {
+				
+				if( "asc".equalsIgnoreCase(sortObj.split(":")[1])) {
+					
+					orderByList.add( listCriteriaBuilder.asc(listStudentsRoot.get(sortObj.split(":")[0])));
+				}else {
+					
+					orderByList.add( listCriteriaBuilder.desc(listStudentsRoot.get(sortObj.split(":")[0])));
+				}
+				
+				
+			}
+			
+			listCriteriaQuery.orderBy(orderByList);
+		}
+
+		studentsList.addAll(entityManager.createQuery(listCriteriaQuery).setMaxResults(limit)
+				.setFirstResult(limit * (page - 1)).getResultList());
 
 		responseNode.put(CommonConstants.RESPONSE, CommonConstants.SUCCESS);
 
@@ -78,7 +177,7 @@ public class StudentService {
 			return new ResponseEntity<>(responseNode, HttpStatus.NOT_FOUND);
 
 		}
-		
+
 		responseNode.put(CommonConstants.RESPONSE, CommonConstants.SUCCESS);
 
 		ArrayNode dataArr = responseNode.putArray("data");
@@ -90,7 +189,7 @@ public class StudentService {
 		return new ResponseEntity<>(responseNode, HttpStatus.OK);
 
 	}
-	
+
 	public ResponseEntity<JsonNode> addStudent(StudentsDTO studentData) {
 
 		String methodName = "addStudent";
@@ -99,7 +198,7 @@ public class StudentService {
 
 		ObjectNode responseNode = JsonNodeFactory.instance.objectNode();
 
-		saveStudent(studentData,null);
+		saveStudent(studentData, null);
 
 		responseNode.put(CommonConstants.RESPONSE, CommonConstants.SUCCESS);
 
@@ -147,30 +246,30 @@ public class StudentService {
 		String methodName = "saveStudent";
 
 		logger.info(String.format(LOG_STR, methodName) + " studentData = " + studentData);
-		
-		if( Objects.isNull(student)) {
-			student =  new Students();
+
+		if (Objects.isNull(student)) {
+			student = new Students();
 		}
 
-		if (Objects.nonNull(studentData.getName() ) && studentData.getName().isPresent())
+		if (Objects.nonNull(studentData.getName()) && studentData.getName().isPresent())
 			student.setName(studentData.getName().get());
 
-		if ( Objects.nonNull(studentData.getDateOfBirth() ) && studentData.getDateOfBirth().isPresent())
+		if (Objects.nonNull(studentData.getDateOfBirth()) && studentData.getDateOfBirth().isPresent())
 			student.setDateOfBirth(studentData.getDateOfBirth().get());
 
-		if (Objects.nonNull(studentData.getAddress() ) && studentData.getAddress().isPresent())
+		if (Objects.nonNull(studentData.getAddress()) && studentData.getAddress().isPresent())
 			student.setAddress(studentData.getAddress().get());
 
-		if (Objects.nonNull(studentData.getGender() ) && studentData.getGender().isPresent())
+		if (Objects.nonNull(studentData.getGender()) && studentData.getGender().isPresent())
 			student.setGender(studentData.getGender().get());
 
-		if (Objects.nonNull(studentData.getContactNumber() ) && studentData.getContactNumber().isPresent())
+		if (Objects.nonNull(studentData.getContactNumber()) && studentData.getContactNumber().isPresent())
 			student.setContactNumber(studentData.getContactNumber().get());
 
-		if (Objects.nonNull(studentData.getSports() ) && studentData.getSports().isPresent())
+		if (Objects.nonNull(studentData.getSports()) && studentData.getSports().isPresent())
 			student.setSports(studentData.getSports().get());
 
-		if (Objects.nonNull(studentData.getCurriculums() ) && studentData.getCurriculums().isPresent())
+		if (Objects.nonNull(studentData.getCurriculums()) && studentData.getCurriculums().isPresent())
 			student.setCurriculums(studentData.getCurriculums().get());
 
 		repository.save(student);
@@ -199,10 +298,10 @@ public class StudentService {
 			responseNode.put(CommonConstants.RESPONSE, CommonConstants.ERROR);
 
 			ArrayNode errorsArr = responseNode.putArray(CommonConstants.ERRORS);
-			
-			invalidIdList.stream().forEach( sId -> {
+
+			invalidIdList.stream().forEach(sId -> {
 				errorsArr.addObject().put(CommonConstants.ERRORCODE, "INVALID_DATA").put(CommonConstants.MESSAGE,
-						"Invalid Student Id = "+sId);
+						"Invalid Student Id = " + sId);
 			});
 
 			logger.error(String.format(LOG_STR, methodName) + " , responseNode = " + responseNode);
@@ -210,33 +309,43 @@ public class StudentService {
 			return new ResponseEntity<>(responseNode, HttpStatus.NOT_FOUND);
 
 		}
-		
+
 		repository.deleteAllInBatch(studentList);
-		
+
 		responseNode.put(CommonConstants.RESPONSE, CommonConstants.SUCCESS);
 
 		logger.info(String.format(LOG_STR, methodName) + " , responseNode = " + responseNode);
 
 		return new ResponseEntity<>(responseNode, HttpStatus.OK);
 	}
-	
+
 	public ResponseEntity<JsonNode> deleteAllStudents() {
 
 		String methodName = "deleteAllStudents";
 
-		logger.info(String.format(LOG_STR, methodName) );
+		logger.info(String.format(LOG_STR, methodName));
 
 		ObjectNode responseNode = JsonNodeFactory.instance.objectNode();
 
 		List<Students> studentList = repository.findAll();
 
 		repository.deleteAllInBatch(studentList);
-		
+
 		responseNode.put(CommonConstants.RESPONSE, CommonConstants.SUCCESS);
 
 		logger.info(String.format(LOG_STR, methodName) + " , responseNode = " + responseNode);
 
 		return new ResponseEntity<>(responseNode, HttpStatus.OK);
 	}
-	
+
+	public static boolean isDateValid(String date) {
+		try {
+			DateFormat df = new SimpleDateFormat(DATE_FORMAT);
+			df.setLenient(false);
+			df.parse(date);
+			return true;
+		} catch (ParseException e) {
+			return false;
+		}
+	}
 }
