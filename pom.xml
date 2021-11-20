@@ -61,7 +61,7 @@
 		<dependency>
 			<groupId>javax.validation</groupId>
 			<artifactId>validation-api</artifactId>
-			<version>2.0.1.Final</version><!--$NO-MVN-MAN-VER$-->
+			<version>2.0.1.Final</version><!--$NO-MVN-MAN-VER$ -->
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.modelmapper/modelmapper -->
@@ -70,7 +70,7 @@
 			<artifactId>modelmapper</artifactId>
 			<version>2.3.9</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
@@ -78,10 +78,16 @@
 			<scope>provided</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>com.sipios</groupId>
+			<artifactId>spring-search</artifactId>
+			<version>0.2.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
-	<finalName>school</finalName>
+		<finalName>school</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

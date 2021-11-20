@@ -5,6 +5,7 @@ import java.util.Arrays;
 import javax.validation.constraints.Positive;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -26,9 +27,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.school.dto.Create;
 import com.school.dto.StudentsDTO;
 import com.school.dto.Update;
+import com.school.entities.Students;
 import com.school.services.StudentService;
 import com.school.utils.CommonConstants;
 import com.school.utils.SchoolLogger;
+import com.sipios.springsearch.anotation.SearchSpec;
 
 // http://localhost:8080/school/students
 
@@ -46,11 +49,11 @@ public class StudentController {
 	private StudentService service;
 
 	@GetMapping
-	public ResponseEntity<JsonNode> getAllStudents() {
+	public ResponseEntity<JsonNode> getAllStudents(@SearchSpec Specification<Students> specs) {
 
-		logger.info(String.format(LOG_STR, "getAllStudents"));
+		logger.info(String.format(LOG_STR, "getAllStudents")+", queryData = "+specs);
 
-		return service.getAllStudents();
+		return service.getAllStudents(specs);
 	}
 
 	@GetMapping("/{id}")
@@ -144,5 +147,5 @@ public class StudentController {
 
 		return service.deleteAllStudents();
 	}
-
+	
 }

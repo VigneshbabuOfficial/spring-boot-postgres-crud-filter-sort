@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ public class StudentService {
 	@Autowired
 	private StudentsRepository repository;
 
-	public ResponseEntity<JsonNode> getAllStudents() {
+	public ResponseEntity<JsonNode> getAllStudents(Specification<Students> specs) {
 
 		String methodName = "getAllStudents";
 
@@ -41,7 +41,7 @@ public class StudentService {
 
 		ObjectNode responseNode = JsonNodeFactory.instance.objectNode();
 
-		List<Students> studentsList = repository.findAll(Sort.by(Sort.Direction.ASC, "id"));
+		List<Students> studentsList = repository.findAll(Specification.where(specs));
 
 		responseNode.put(CommonConstants.RESPONSE, CommonConstants.SUCCESS);
 
