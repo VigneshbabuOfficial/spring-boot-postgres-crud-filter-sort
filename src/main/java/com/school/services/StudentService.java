@@ -56,9 +56,8 @@ public class StudentService {
 	public ResponseEntity<JsonNode> getAllStudents(Specification<Students> specs, String globalSearch, int page,
 			int limit, List<String> sortingList) {
 
-		String methodName = "getAllStudents" + ", queryData = " + specs + ", globalSearch = "
-				+ globalSearch + ", page = " + page + ", limit = " + limit + ", sorting-list = "
-				+ String.join(", ", sortingList);
+		String methodName = "getAllStudents" + ", queryData = " + specs + ", globalSearch = " + globalSearch
+				+ ", page = " + page + ", limit = " + limit + ", sorting-list = " + String.join(", ", sortingList);
 
 		logger.info(String.format(LOG_STR, methodName));
 
@@ -74,7 +73,7 @@ public class StudentService {
 
 			listCriteriaQuery.where(specs.toPredicate(listStudentsRoot, listCriteriaQuery, listCriteriaBuilder));
 
-		} else if( StringUtils.isNotBlank(globalSearch) ){
+		} else if (StringUtils.isNotBlank(globalSearch)) {
 
 			List<Predicate> predicates = new ArrayList<>();
 
@@ -117,25 +116,23 @@ public class StudentService {
 			listCriteriaQuery.where(predicates.toArray(new Predicate[predicates.size()]));
 
 		}
-		
-		
-		if( !sortingList.isEmpty() ) {
-			
+
+		if (!sortingList.isEmpty()) {
+
 			List<Order> orderByList = new ArrayList<>();
-			
+
 			for (String sortObj : sortingList) {
-				
-				if( "asc".equalsIgnoreCase(sortObj.split(":")[1])) {
-					
-					orderByList.add( listCriteriaBuilder.asc(listStudentsRoot.get(sortObj.split(":")[0])));
-				}else {
-					
-					orderByList.add( listCriteriaBuilder.desc(listStudentsRoot.get(sortObj.split(":")[0])));
+
+				if ("asc".equalsIgnoreCase(sortObj.split(":")[1])) {
+
+					orderByList.add(listCriteriaBuilder.asc(listStudentsRoot.get(sortObj.split(":")[0])));
+				} else {
+
+					orderByList.add(listCriteriaBuilder.desc(listStudentsRoot.get(sortObj.split(":")[0])));
 				}
-				
-				
+
 			}
-			
+
 			listCriteriaQuery.orderBy(orderByList);
 		}
 
