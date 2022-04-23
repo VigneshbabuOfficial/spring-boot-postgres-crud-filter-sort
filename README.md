@@ -9,3 +9,6 @@ Server: WildFly 24+
 Project Type: WAR
 
 ```
+
+### Docs:
+### https://documenter.getpostman.com/view/16179737/UyrAFxRi
